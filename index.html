@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Team Assam Mods - Injector Hub</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        :root {
+            --bg-dark: #060913;
+            --surface: #0e1424;
+            --neon-cyan: #00ffcc;
+            --neon-pink: #ff0055;
+            --text-main: #ffffff;
+            --text-sub: #69778e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Arial', sans-serif; -webkit-user-select: none; }
+        body, html { width: 100%; height: 100%; background: var(--bg-dark); color: var(--text-main); overflow: hidden; }
+        
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 20px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0; pointer-events: none; transform: scale(0.96);
+        }
+        .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+
+        .card {
+            background: var(--surface); width: 100%; max-width: 350px;
+            padding: 30px 20px; border-radius: 16px; border: 1px solid rgba(0,255,204,0.1);
+            box-shadow: 0 0 25px rgba(0,255,204,0.12); text-align: center; position: relative;
+        }
+        
+        .title-primary { color: var(--neon-cyan); font-size: 28px; font-weight: 900; text-shadow: 0 0 12px rgba(0,255,204,0.4); margin-bottom: 6px; letter-spacing: 1px; }
+        .title-secondary { color: var(--neon-pink); font-size: 20px; font-weight: 700; text-shadow: 0 0 10px rgba(255,0,85,0.3); margin-bottom: 25px; letter-spacing: 2px; }
+        
+        .lang-wrapper { position: absolute; top: 15px; right: 15px; z-index: 50; }
+        .lang-select { background: #141b2d; color: #fff; border: 1px solid var(--neon-cyan); padding: 6px; border-radius: 6px; font-size: 12px; outline: none; }
+
+        .input-element { width: 100%; background: #060913; border: 1px solid rgba(255,255,255,0.08); padding: 14px; border-radius: 8px; color: #fff; font-size: 15px; margin-bottom: 15px; outline: none; transition: border 0.2s; }
+        .input-element:focus { border-color: var(--neon-cyan); }
+        
+        .btn-action { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
+        .btn-cyan { background: linear-gradient(135deg, var(--neon-cyan), #0099ff); color: #000; }
+        .btn-cyan:active { transform: scale(0.98); }
+        
+        .msg-display { margin-top: 12px; font-size: 13px; font-weight: bold; min-height: 20px; }
+        .copyright-label { margin-top: 25px; font-size: 10px; color: var(--text-sub); letter-spacing: 1px; }
+        
+        /* Lockdown Interface */
+        #screen-lockdown { background: #03050c; z-index: 999; }
+        .lock-text { font-size: 15px; color: #cbd5e1; margin: 20px 0; line-height: 1.6; padding: 0 10px; }
+        .btn-tg-join { background: #0088cc; color: white; text-decoration: none; display: inline-block; width: 100%; padding: 14px; border-radius: 8px; font-weight: bold; text-transform: uppercase; font-size: 14px; box-shadow: 0 4px 15px rgba(0,136,204,0.3); }
+    </style>
+</head>
+<body>
+
+    <div class="screen active" id="scr-welcome">
+        <div class="card">
+            <div class="title-primary">TEAM ASSAM MODS</div>
+            <div class="title-secondary">BISWAJIT RABHA</div>
+            <button class="btn-action btn-cyan" onclick="goToLogin()">Continue</button>
+            <div class="copyright-label" id="copy-w">© 2026 TEAM ASSAM MODS</div>
+        </div>
+    </div>
+
+    <div class="screen" id="scr-login">
+        <div class="lang-wrapper">
+            <select class="lang-select" id="langSelect" onchange="switchLanguage(this.value)">
+                <option value="en">English (Global)</option>
+                <option value="hi">Hindi (भारत)</option>
+                <option value="as">Assamese (অসমীয়া)</option>
+                <option value="zh">China (中文)</option>
+                <option value="pt">Brazil (Português)</option>
+                <option value="ru">Russia (Русский)</option>
+                <option value="fr">France (Français)</option>
+                <option value="ko_s">South Korea (한국어)</option>
+                <option value="ko_n">North Korea (조선말)</option>
+            </select>
+        </div>
+        <div class="card">
+            <div class="title-primary" id="ui-main-title" style="font-size:22px; margin-bottom:25px;">TEAM ASSAM MODS V1</div>
+            <input type="text" id="username" class="input-element" placeholder="Username" oninput="cacheInputFields()">
+            <input type="password" id="password" class="input-element" placeholder="Password" oninput="cacheInputFields()">
+            <button class="btn-action btn-cyan" id="ui-btn-text" onclick="validateUser()">Login</button>
+            <div class="msg-display" id="ui-status-msg"></div>
+            <div class="copyright-label" id="copy-l">© 2026 TEAM ASSAM MODS</div>
+        </div>
+    </div>
+
+    <div class="screen" id="screen-lockdown">
+        <div class="card" style="border-color: var(--neon-pink); box-shadow: 0 0 25px rgba(255,0,85,0.15);">
+            <div class="title-secondary" style="color:var(--neon-pink); margin-bottom:10px;">SYSTEM LOCKDOWN</div>
+            <div class="lock-text" id="ui-m-desc">App is currently expired or under maintenance. Please wait for the new update.</div>
+            <a href="#" id="ui-tg-btn" class="btn-tg-join" target="_blank">Join Telegram</a>
+        </div>
+    </div>
+
+    <script>
+        // डिक्शनरी मैपिंग सिस्टम
+        const dictionary = {
+            en: { title: "TEAM ASSAM MODS V1", login: "Login", user: "Username", pass: "Password", correct: "Username Password Correct!", wrong: "Wrong Username or Password!", expired: "Your Key Has Expired!", blocked: "Key Blocked by Developer!" },
+            hi: { title: "टीम असम मोड्स V1", login: "लॉगिन", user: "यूज़रनेम", pass: "पासवर्ड", correct: "यूज़रनेम पासवर्ड सही है!", wrong: "गलत यूज़रनेम या पासवर्ड!", expired: "आपकी की समाप्त हो गई है!", blocked: "डेवलपर द्वारा की ब्लॉक है!" },
+            as: { title: "টিম অসম মডচ V1", login: "লগইন কৰক", user: "ইউজাৰনেম", pass: "পাছৱৰ্ড", correct: "ইউজাৰনেম পাছৱৰ্ড শুদ্ধ হয়!", wrong: "ভুল ইউজাৰনেম বা পাছৱৰ্ড!", expired: "আপোনাৰ কি' শেষ হৈছে!", blocked: "ডেভলপাৰে কি' বন্ধ কৰিছে!" },
+            zh: { title: "阿萨姆团队 MODS V1", login: "登录", user: "用户名", pass: "密码", correct: "用户名密码正确！", wrong: "用户名或密码错误！", expired: "您的激活码已过期！", blocked: "激活码已被开发者禁用！" },
+            pt: { title: "TEAM ASSAM MODS V1", login: "Entrar", user: "Usuário", pass: "Senha", correct: "Usuário Senha Correto!", wrong: "Usuário ou Senha Incorreta!", expired: "Sua chave expirou!", blocked: "Chave Bloqueada pelo Desenvolvedor!" },
+            ru: { title: "TEAM ASSAM MODS V1", login: "Вход", user: "Имя", pass: "Пароль", correct: "Логин и пароль верны!", wrong: "Неверное имя или пароль!", expired: "Ключ истек!", blocked: "Ключ заблокирован разработчиком!" },
+            fr: { title: "TEAM ASSAM MODS V1", login: "Connexion", user: "Identifiant", pass: "Mot de passe", correct: "Identifiant Mot de passe Correct!", wrong: "Identifiant ou Mot de passe Incorrect!", expired: "Votre clé a expiré!", blocked: "Clé bloquée par le développeur!" },
+            ko_s: { title: "팀 아쌈 모드 V1", login: "로그인", user: "사용자 이름", pass: "비밀번호", correct: "사용자 이름 비밀번호가 맞습니다!", wrong: "사용자 이름 또는 비밀번호가 틀렸습니다!", expired: "키가 만료되었습니다!", blocked: "개발자에 의해 키가 차단되었습니다!" },
+            ko_n: { title: "팀 아쌈 모드 V1", login: "로근인", user: "사용자명", pass: "암호", correct: "사용자명 암호가 정확합니다!", wrong: "사용자명 또는 암호가 틀렸습니다!", expired: "기간이 만료되였습니다!", blocked: "개발자에 의해 차단되였습니다!" }
+        };
+
+        // नया अपडेटेड फायरबेस यूआरएल
+        const firebaseConfig = { databaseURL: "https://team-assam-admin-adminskey-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let activeLang = localStorage.getItem("app_cached_lang") || "en";
+
+        window.addEventListener("DOMContentLoaded", () => {
+            // इनपुट डेटा रिकवरी
+            if(localStorage.getItem("stored_username")) document.getElementById("username").value = localStorage.getItem("stored_username");
+            if(localStorage.getItem("stored_password")) document.getElementById("password").value = localStorage.getItem("stored_password");
+            
+            document.getElementById("langSelect").value = activeLang;
+            switchLanguage(activeLang);
+            initializeRemoteStream();
+        });
+
+        function switchLanguage(lang) {
+            activeLang = lang;
+            localStorage.setItem("app_cached_lang", lang);
+            
+            document.getElementById("username").placeholder = dictionary[lang].user;
+            document.getElementById("password").placeholder = dictionary[lang].pass;
+            document.getElementById("ui-btn-text").innerText = dictionary[lang].login;
+            
+            if(!window.otaUiActive) {
+                document.getElementById("ui-main-title").innerText = dictionary[lang].title;
+            }
+        }
+
+        function cacheInputFields() {
+            localStorage.setItem("stored_username", document.getElementById("username").value);
+            localStorage.setItem("stored_password", document.getElementById("password").value);
+        }
+
+        function goToLogin() {
+            document.getElementById("scr-welcome").classList.remove("active");
+            document.getElementById("scr-login").classList.add("active");
+        }
+
+        function initializeRemoteStream() {
+            // सुरक्षित एडमिन UI लिसनर (Safe Listener जो डेटा न होने पर भी क्रैश नहीं होगा)
+            database.ref("site_settings").on("value", (snapshot) => {
+                if(snapshot.exists()){
+                    const data = snapshot.val();
+                    window.otaUiActive = true;
+                    if(data.user_box_title) document.getElementById("ui-main-title").innerText = data.user_box_title;
+                    if(data.username_hint) document.getElementById("username").placeholder = data.username_hint;
+                    if(data.password_hint) document.getElementById("password").placeholder = data.password_hint;
+                    if(data.login_btn_text) document.getElementById("ui-btn-text").innerText = data.login_btn_text;
+                    if(data.copyright_text) {
+                        document.getElementById("copy-w").innerText = data.copyright_text;
+                        document.getElementById("copy-l").innerText = data.copyright_text;
+                    }
+                    if(data.tg_link) document.getElementById("ui-tg-btn").href = data.tg_link;
+                }
+            }, (error) => { console.log("UI Stream Offline"); });
+
+            // सुरक्षित मेंटेनेंस मोड लिसनर
+            database.ref("maintenance").on("value", (snapshot) => {
+                if(snapshot.exists() && snapshot.val() === true) {
+                    database.ref("maintenance_msg").once("value", (msgSnap) => {
+                        if(msgSnap.exists()) document.getElementById("ui-m-desc").innerText = msgSnap.val();
+                    });
+                    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+                    document.getElementById("screen-lockdown").classList.add("active");
+                }
+            }, (error) => { console.log("Maintenance Stream Offline"); });
+        }
+
+        function validateUser() {
+            const userIn = document.getElementById("username").value.trim();
+            const passIn = document.getElementById("password").value.trim();
+            const logBox = document.getElementById("ui-status-msg");
+
+            if(!userIn || !passIn) return;
+
+            logBox.style.color = "#eab308";
+            logBox.innerText = "Authorizing...";
+
+            database.ref("users/" + userIn).once("value").then((snapshot) => {
+                if(snapshot.exists()) {
+                    const userData = snapshot.val();
+                    if(userData.password === passIn) {
+                        
+                        if(userData.status === "disabled") {
+                            logBox.style.color = var(--neon-pink);
+                            logBox.innerText = dictionary[activeLang].blocked;
+                            return;
+                        }
+                        
+                        const currentEpoch = Math.floor(Date.now() / 1000);
+                        if(currentEpoch > userData.expiry) {
+                            logBox.style.color = "#ef4444";
+                            logBox.innerText = dictionary[activeLang].expired;
+                        } else {
+                            logBox.style.color = var(--neon-cyan);
+                            logBox.innerText = dictionary[activeLang].correct;
+                            
+                            // AIDE Pro जावा ब्रिज ट्रिगर
+                            if(window.AndroidInterface && window.AndroidInterface.onLoginSuccess) {
+                                window.AndroidInterface.onLoginSuccess();
+                            }
+                        }
+                    } else {
+                        logBox.style.color = "#ef4444";
+                        logBox.innerText = dictionary[activeLang].wrong;
+                    }
+                } else {
+                    logBox.style.color = "#ef4444";
+                    logBox.innerText = dictionary[activeLang].wrong;
+                }
+            }).catch((err) => {
+                logBox.style.color = "red";
+                logBox.innerText = "Database Error or No Response!";
+            });
+        }
+    </script>
+</body>
+</html>
